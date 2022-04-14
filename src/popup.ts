@@ -7,27 +7,41 @@ document.addEventListener("DOMContentLoaded", () => {
 	const stopButton = document.getElementById("stop");
 	const errorText = document.getElementById("error");
 
-	startButton?.addEventListener("click", async () => {
-		console.log("started");
-		startButton.classList.add("hidden");
-		stopButton?.classList.remove("hidden");
+	if (!startButton || !stopButton || !errorText) return;
 
-		chrome.runtime.sendMessage({ type: "START" }, ({ error }) => {
-			if (error && errorText) {
-				errorText.innerHTML = error;
-			}
+	const showStart = () => {
+		stopButton.classList.add("hidden");
+		startButton.classList.remove("hidden");
+	};
+
+	const showStop = () => {
+		startButton.classList.add("hidden");
+		stopButton.classList.remove("hidden");
+	};
+
+	startButton.addEventListener("click", async () => {
+		showStop();
+
+		chrome.runtime.sendMessage({ type: "START" }, ({ data, error }) => {
+			errorText.innerText = error ?? "";
 		});
 	});
 
-	stopButton?.addEventListener("click", async () => {
-		console.log("stopped");
-		stopButton.classList.add("hidden");
-		startButton?.classList.remove("hidden");
+	stopButton.addEventListener("click", async () => {
+		showStart();
 
 		chrome.runtime.sendMessage({ type: "STOP" }, ({ error }) => {
-			if (error && errorText) {
-				errorText.innerHTML = error;
-			}
+			errorText.innerText = error ?? "";
 		});
+	});
+
+	chrome.runtime.sendMessage({ type: "STATE" }, ({ status, error }) => {
+		if (status === 1) {
+			showStop();
+		} else {
+			showStart();
+		}
+
+		errorText.innerText = error ?? "";
 	});
 });

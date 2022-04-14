@@ -1,6 +1,6 @@
 "use strict";
 
-import { ChromeMessage } from "./lib/types";
+import { AppState, ChromeMessage } from "./lib/types";
 import { fetchAPI, loginUrl } from "./lib/utils";
 
 // With background scripts you can communicate with popup
@@ -31,24 +31,40 @@ chrome.runtime.onMessage.addListener(
 	}
 );
 
-let status = 0;
+const state: AppState = {
+	status: 0,
+	error: "",
+};
+
+registerMessageListener("STATE", async () => {
+	return state;
+});
 
 registerMessageListener("START", async (request, sender) => {
-	status = 1;
+	state.status = 1;
+	state.error = "";
 
-	const { data, error, status: reqStatus } = await fetchAPI("users/me");
+	let { data, error } = await fetchAPI("users/me");
+
+	if (data && data.user?.rank !== "admin") {
+		error = "Vous n'êtes pas administrateur";
+	}
+
 	if (error) {
-		if (reqStatus == 401) {
+		if (error == "Unauthorized") {
 			chrome.tabs.create({ url: loginUrl });
 		}
 
+		state.error = error;
 		return { error };
 	}
-	console.log(data);
 
-	return { data: { message: "hello" } };
+	return { data };
 });
 
 registerMessageListener("STOP", async (request, sender) => {
-	status = 0;
+	state.status = 0;
+	state.error = "";
+
+	return {};
 });
